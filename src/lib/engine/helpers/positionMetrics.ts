@@ -53,7 +53,8 @@ const withTurn = (fen: string, turn: Color): string => {
 
 const countCaptures = (fen: string): number => {
   const board = new Chess(fen);
-  return board.moves({ verbose: true }).filter((move) => !!move.captured).length;
+  return board.moves({ verbose: true }).filter((move) => !!move.captured)
+    .length;
 };
 
 const countMobility = (fen: string): number => {

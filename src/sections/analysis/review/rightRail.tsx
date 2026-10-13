@@ -52,10 +52,7 @@ export default function RightRail() {
   const history = game.history();
 
   const classifications = useMemo(
-    () =>
-      history.map(
-        (_, i) => gameEval?.positions[i + 1]?.moveClassification
-      ),
+    () => history.map((_, i) => gameEval?.positions[i + 1]?.moveClassification),
     [history, gameEval]
   );
 
@@ -513,8 +510,7 @@ function Ribbon({
   index: number;
   onSelect: (index: number) => void;
 }) {
-  const percent =
-    moves.length === 0 ? 0 : ((index + 0.5) / moves.length) * 100;
+  const percent = moves.length === 0 ? 0 : ((index + 0.5) / moves.length) * 100;
 
   return (
     <Box
@@ -613,7 +609,9 @@ function MoveCell({
           ? "linear-gradient(180deg, #eab87a, #c98b4b)"
           : "transparent",
         transition: "background-color .14s, color .14s",
-        "&:hover": active ? undefined : { backgroundColor: "rgba(255,255,255,0.06)" },
+        "&:hover": active
+          ? undefined
+          : { backgroundColor: "rgba(255,255,255,0.06)" },
       }}
     >
       <Box component="span">{san}</Box>

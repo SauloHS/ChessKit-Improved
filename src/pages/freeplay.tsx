@@ -21,8 +21,7 @@ import { CurrentPosition, PositionEval } from "@/types/eval";
 import { getPositionWinPercentage } from "@/lib/engine/helpers/winPercentage";
 import { PageTitle } from "@/components/pageTitle";
 
-const START_FEN =
-  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 interface Step {
   san: string;
@@ -163,8 +162,7 @@ export default function FreePlay() {
   // Plays the engine's best move in the given position.
   const playEngineMove = useCallback(
     async (fromGame: Chess, beforeEval: PositionEval | null) => {
-      const res =
-        beforeEval ?? (await evaluate(fromGame.fen()));
+      const res = beforeEval ?? (await evaluate(fromGame.fen()));
       if (!res?.bestMove) return null;
 
       const next = new Chess(fromGame.fen());
@@ -439,10 +437,7 @@ export default function FreePlay() {
             gap={1}
             sx={{ display: { xs: "flex", md: "none" }, width: "100%" }}
           >
-            <MobileButton
-              disabled={pos < 0}
-              onClick={() => goToStep(pos - 1)}
-            >
+            <MobileButton disabled={pos < 0} onClick={() => goToStep(pos - 1)}>
               ←
             </MobileButton>
             <MobileButton
@@ -451,7 +446,10 @@ export default function FreePlay() {
             >
               →
             </MobileButton>
-            <MobileButton disabled={busy || steps.length === 0} onClick={undoMove}>
+            <MobileButton
+              disabled={busy || steps.length === 0}
+              onClick={undoMove}
+            >
               Undo
             </MobileButton>
             <MobileButton disabled={busy} onClick={newGame}>
@@ -534,7 +532,11 @@ export default function FreePlay() {
             })}
           </Box>
 
-          <Stack direction="row" gap={1} sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}>
+          <Stack
+            direction="row"
+            gap={1}
+            sx={{ p: 1.5, borderTop: 1, borderColor: "divider" }}
+          >
             <Button
               fullWidth
               variant="outlined"
@@ -583,7 +585,8 @@ function OptionRow({
 }: {
   label: string;
   children: React.ReactNode;
-}) {  return (
+}) {
+  return (
     <Stack
       direction="row"
       alignItems="center"

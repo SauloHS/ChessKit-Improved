@@ -22,8 +22,7 @@ export default function BoardContainer() {
   const boardSize = useMemo(() => {
     const width = screenSize.width;
     const height = screenSize.height;
-    const isWide =
-      typeof window !== "undefined" && window.innerWidth >= 1000;
+    const isWide = typeof window !== "undefined" && window.innerWidth >= 1000;
 
     if (!isWide) {
       return Math.min(width, 560);

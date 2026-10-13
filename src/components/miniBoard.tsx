@@ -6,7 +6,11 @@ interface Props {
   pieceSet?: string;
 }
 
-export default function MiniBoard({ fen, size = 300, pieceSet = "staunty" }: Props) {
+export default function MiniBoard({
+  fen,
+  size = 300,
+  pieceSet = "staunty",
+}: Props) {
   const boardPart = fen.split(" ")[0];
   const squares: (string | null)[] = [];
 

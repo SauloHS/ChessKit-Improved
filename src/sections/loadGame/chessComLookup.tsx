@@ -547,7 +547,12 @@ function GameRow({
           userResult === "resigned" ||
           userResult === "abandoned"
         ? "Loss"
-        : userResult === "agreed" || userResult === "repetition" || userResult === "stalemate" || userResult === "insufficient" || userResult === "50move" || userResult === "timevsinsufficient"
+        : userResult === "agreed" ||
+            userResult === "repetition" ||
+            userResult === "stalemate" ||
+            userResult === "insufficient" ||
+            userResult === "50move" ||
+            userResult === "timevsinsufficient"
           ? "Draw"
           : "";
 

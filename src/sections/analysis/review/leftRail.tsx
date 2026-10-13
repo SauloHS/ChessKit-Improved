@@ -169,7 +169,12 @@ export default function LeftRail() {
       </Stack>
 
       <Typography
-        sx={{ mt: "auto", fontSize: 12, lineHeight: 1.6, color: "text.secondary" }}
+        sx={{
+          mt: "auto",
+          fontSize: 12,
+          lineHeight: 1.6,
+          color: "text.secondary",
+        }}
       >
         Drag a piece on the board to test another move in the current position.
       </Typography>
