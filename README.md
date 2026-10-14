@@ -112,3 +112,4 @@ To run the project locally in production mode, you can use docker and the follow
 ```bash
 docker compose -f ./docker/docker-compose-prod.yml up
 ```
+
