@@ -1,5 +1,6 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useAtomValue, useSetAtom } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { useMemo } from "react";
 import { Chess } from "chess.js";
 import {
@@ -29,8 +30,22 @@ const LABELS: Record<MoveClassification, string> = {
 
 const START_TEXT = "Use the ← → arrows to begin.";
 
+const lastMoveInfoAtom = selectAtom(
+  currentPositionAtom,
+  (position) => ({
+    moveClass: position?.eval?.moveClassification,
+    lastMoveSan: position?.lastMove?.san,
+    lastBestMove: position?.lastEval?.bestMove,
+  }),
+  (a, b) =>
+    a.moveClass === b.moveClass &&
+    a.lastMoveSan === b.lastMoveSan &&
+    a.lastBestMove === b.lastBestMove
+);
+
 export default function LeftRail() {
-  const position = useAtomValue(currentPositionAtom);
+  const { moveClass, lastMoveSan, lastBestMove } =
+    useAtomValue(lastMoveInfoAtom);
   const board = useAtomValue(boardAtom);
   const setGame = useSetAtom(gameAtom);
   const setGameEval = useSetAtom(gameEvalAtom);
@@ -39,18 +54,14 @@ export default function LeftRail() {
   const fen = board.fen();
   const metrics = useMemo(() => computePositionMetrics(fen), [fen]);
 
-  const moveClass = position?.eval?.moveClassification;
-  const lastMoveSan = position?.lastMove?.san;
-
   const bestMoveSan = useMemo(() => {
-    const bestMove = position?.lastEval?.bestMove;
-    if (!bestMove) return undefined;
+    if (!lastBestMove) return undefined;
 
     const before = board.history({ verbose: true }).at(-1)?.before;
     if (!before) return undefined;
 
-    return moveLineUciToSan(before)(bestMove);
-  }, [position, board]);
+    return moveLineUciToSan(before)(lastBestMove);
+  }, [lastBestMove, board]);
 
   const showBestMove =
     !!bestMoveSan &&
