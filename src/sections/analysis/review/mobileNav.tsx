@@ -4,19 +4,18 @@ import { useAtomValue, useSetAtom } from "jotai";
 import {
   boardAtom,
   boardOrientationAtom,
-  currentPositionAtom,
+  currentMoveIdxAtom,
   gameAtom,
 } from "../states";
 import { useChessActions } from "@/hooks/useChessActions";
 
 export default function MobileNav() {
   const game = useAtomValue(gameAtom);
-  const position = useAtomValue(currentPositionAtom);
+  const currentIdx = useAtomValue(currentMoveIdxAtom);
   const setOrientation = useSetAtom(boardOrientationAtom);
   const { goToMove } = useChessActions(boardAtom);
 
   const total = game.history().length;
-  const currentIdx = position?.currentMoveIdx ?? 0;
 
   if (total === 0) return null;
 
