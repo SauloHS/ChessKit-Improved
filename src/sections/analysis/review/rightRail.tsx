@@ -5,7 +5,7 @@ import { Icon } from "@iconify/react";
 import {
   boardAtom,
   boardOrientationAtom,
-  currentPositionAtom,
+  currentMoveIdxAtom,
   gameAtom,
   gameEvalAtom,
 } from "../states";
@@ -39,7 +39,7 @@ const HUES: { label: string; value: number }[] = [
 export default function RightRail() {
   const gameEval = useAtomValue(gameEvalAtom);
   const game = useAtomValue(gameAtom);
-  const position = useAtomValue(currentPositionAtom);
+  const currentIdx = useAtomValue(currentMoveIdxAtom);
   const { white, black } = usePlayersData(gameAtom);
   const { goToMove } = useChessActions(boardAtom);
 
@@ -49,7 +49,7 @@ export default function RightRail() {
 
   const [themeAnchor, setThemeAnchor] = useState<null | HTMLElement>(null);
 
-  const history = game.history();
+  const history = useMemo(() => game.history(), [game]);
 
   const classifications = useMemo(
     () => history.map((_, i) => gameEval?.positions[i + 1]?.moveClassification),
@@ -68,8 +68,6 @@ export default function RightRail() {
 
     return result;
   }, [classifications]);
-
-  const currentIdx = position?.currentMoveIdx ?? 0;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
