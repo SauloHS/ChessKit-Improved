@@ -17,6 +17,7 @@ import Board from "@/components/board";
 import { PageTitle } from "@/components/pageTitle";
 import { useScreenSize } from "@/hooks/useScreenSize";
 import {
+  PuzzleImportError,
   PuzzleImportProgress,
   PuzzleRecord,
   downloadLichessPuzzles,
@@ -38,6 +39,25 @@ type Status =
   | "solved";
 
 type Outcome = "win" | "loss" | "neutral";
+
+interface Failure {
+  code: string;
+  message: string;
+  detail?: string;
+}
+
+const toFailure = (error: unknown): Failure => {
+  if (error instanceof PuzzleImportError) {
+    return { code: error.code, message: error.message, detail: error.detail };
+  }
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return { code: "CANCELLED", message: "Import cancelled." };
+  }
+  if (error instanceof Error) {
+    return { code: error.name || "UNKNOWN", message: error.message };
+  }
+  return { code: "UNKNOWN", message: "Import failed.", detail: String(error) };
+};
 
 interface PuzzleStats {
   rating: number;
@@ -149,7 +169,7 @@ export default function Puzzles() {
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<PuzzleImportProgress | null>(null);
   const [limit, setLimit] = useState(100000);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<Failure | null>(null);
 
   const screenSize = useScreenSize();
   const isWide = useMediaQuery("(min-width:1000px)");
@@ -275,9 +295,12 @@ export default function Puzzles() {
   useEffect(() => {
     getPuzzleCount()
       .then(setCount)
-      .catch(() => {
+      .catch((dbError) => {
         setCount(0);
-        setError("Could not open the local puzzle database in this browser.");
+        setError({
+          ...toFailure(dbError),
+          message: "Could not open the local puzzle database in this browser.",
+        });
       });
   }, [version]);
 
@@ -402,7 +425,7 @@ export default function Puzzles() {
     abortRef.current = controller;
 
     setImporting(true);
-    setError("");
+    setError(null);
     setProgress(null);
     tokenRef.current++;
 
@@ -410,16 +433,7 @@ export default function Puzzles() {
       await task(controller.signal);
       setShowImport(false);
     } catch (importError) {
-      const cancelled =
-        importError instanceof DOMException &&
-        importError.name === "AbortError";
-      setError(
-        cancelled
-          ? "Import cancelled."
-          : importError instanceof Error
-            ? importError.message
-            : "Import failed."
-      );
+      setError(toFailure(importError));
     } finally {
       abortRef.current = null;
       setImporting(false);
@@ -577,9 +591,34 @@ export default function Puzzles() {
       )}
 
       {error && (
-        <Typography sx={{ fontSize: 13, color: "error.main" }}>
-          {error}
-        </Typography>
+        <Stack rowGap={0.5}>
+          <Typography sx={{ fontSize: 13, color: "error.main" }}>
+            {error.message}
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: 12,
+              color: "text.secondary",
+              fontFamily: "monospace",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {error.code}
+            {error.detail ? ` · ${error.detail}` : ""}
+          </Typography>
+          {(error.code === "CORS_BLOCKED" ||
+            error.code === "NETWORK_UNREACHABLE") && (
+            <Box
+              component="a"
+              href="https://database.lichess.org/lichess_db_puzzle.csv.zst"
+              target="_blank"
+              rel="noreferrer"
+              sx={{ fontSize: 13, color: "primary.main" }}
+            >
+              Open the Lichess file link to download it
+            </Box>
+          )}
+        </Stack>
       )}
     </Stack>
   );
