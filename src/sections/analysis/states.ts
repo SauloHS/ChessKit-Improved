@@ -10,6 +10,9 @@ export const gameEvalAtom = atom<GameEval | undefined>(undefined);
 export const gameAtom = atom(new Chess());
 export const boardAtom = atom(new Chess());
 export const currentPositionAtom = atom<CurrentPosition>({});
+export const currentMoveIdxAtom = atom(
+  (get) => get(currentPositionAtom)?.currentMoveIdx ?? 0
+);
 
 export const boardOrientationAtom = atom(true);
 export const showBestMoveArrowAtom = atom(true);
