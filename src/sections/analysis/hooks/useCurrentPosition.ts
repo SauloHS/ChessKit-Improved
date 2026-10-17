@@ -14,6 +14,33 @@ import { getEvaluateGameParams } from "@/lib/chess";
 import { getMovesClassification } from "@/lib/engine/helpers/moveClassification";
 import { openings } from "@/data/openings";
 import { UciEngine } from "@/lib/engine/uciEngine";
+import { isMobileDevice } from "@/lib/engine/shared";
+
+let openingsByFen: Map<string, string> | null = null;
+
+const getOpeningName = (fen: string): string | undefined => {
+  if (!openingsByFen) {
+    openingsByFen = new Map();
+    for (const opening of openings) {
+      if (!openingsByFen.has(opening.fen)) {
+        openingsByFen.set(opening.fen, opening.name);
+      }
+    }
+  }
+  return openingsByFen.get(fen);
+};
+
+const getPartialUpdateInterval = (): number => {
+  if (typeof navigator === "undefined") return 100;
+
+  const lowCores = navigator.hardwareConcurrency <= 4;
+  const lowMemory =
+    "deviceMemory" in navigator &&
+    typeof navigator.deviceMemory === "number" &&
+    navigator.deviceMemory <= 4;
+
+  return isMobileDevice() || lowCores || lowMemory ? 400 : 100;
+};
 
 export const useCurrentPosition = (engine: UciEngine | null) => {
   const [currentPosition, setCurrentPosition] = useAtom(currentPositionAtom);
@@ -25,6 +52,8 @@ export const useCurrentPosition = (engine: UciEngine | null) => {
   const [savedEvals, setSavedEvals] = useAtom(savedEvalsAtom);
 
   useEffect(() => {
+    let cancelled = false;
+    let partialTimer: ReturnType<typeof setTimeout> | null = null;
     const boardHistory = board.history({ verbose: true });
     const position: CurrentPosition = {
       lastMove: boardHistory.at(-1),
@@ -61,10 +90,9 @@ export const useCurrentPosition = (engine: UciEngine | null) => {
 
     if (!position.eval?.opening) {
       for (const move of boardHistory.slice().reverse()) {
-        const moveFen = move.after.split(" ")[0];
-        const opening = openings.find((opening) => opening.fen === moveFen);
+        const opening = getOpeningName(move.after.split(" ")[0]);
         if (opening) {
-          position.opening = opening.name;
+          position.opening = opening;
           break;
         }
       }
@@ -117,13 +145,39 @@ export const useCurrentPosition = (engine: UciEngine | null) => {
       };
 
       const getPositionEval = async () => {
-        const setPartialEval = (positionEval: PositionEval) => {
-          setCurrentPosition({ ...position, eval: positionEval });
+        const interval = getPartialUpdateInterval();
+        let lastApplied = 0;
+        let latest: PositionEval | null = null;
+
+        const applyPartial = () => {
+          partialTimer = null;
+          if (cancelled || !latest) return;
+          const next = latest;
+          latest = null;
+          lastApplied = performance.now();
+          setCurrentPosition({ ...position, eval: next });
         };
+
+        const setPartialEval = (positionEval: PositionEval) => {
+          if (cancelled) return;
+          latest = positionEval;
+
+          const wait = interval - (performance.now() - lastApplied);
+          if (wait <= 0) {
+            if (partialTimer) clearTimeout(partialTimer);
+            applyPartial();
+            return;
+          }
+          if (!partialTimer) partialTimer = setTimeout(applyPartial, wait);
+        };
+
         const rawPositionEval = await getFenEngineEval(
           board.fen(),
           setPartialEval
         );
+
+        if (partialTimer) clearTimeout(partialTimer);
+        applyPartial();
 
         if (boardHistory.length === 0) return;
 
@@ -153,6 +207,8 @@ export const useCurrentPosition = (engine: UciEngine | null) => {
           fens
         );
 
+        if (cancelled) return;
+
         setCurrentPosition({
           ...position,
           eval: positionsWithMoveClassification.slice(-1)[0],
@@ -164,6 +220,8 @@ export const useCurrentPosition = (engine: UciEngine | null) => {
     }
 
     return () => {
+      cancelled = true;
+      if (partialTimer) clearTimeout(partialTimer);
       if (engine?.getIsReady()) {
         engine?.stopAllCurrentJobs();
       }
