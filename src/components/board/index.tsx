@@ -1,4 +1,4 @@
-import { Box, Grid2 as Grid } from "@mui/material";
+import { Grid2 as Grid, useMediaQuery } from "@mui/material";
 import { Chessboard } from "react-chessboard";
 import { PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
 import {
@@ -56,7 +56,17 @@ export default function Board({
   const setClickedSquares = useSetAtom(clickedSquaresAtom);
   const playableSquaresAtom = useMemo(() => atom<Square[]>([]), []);
   const setPlayableSquares = useSetAtom(playableSquaresAtom);
-  const position = useAtomValue(currentPositionAtom);
+  const arrowKeyAtom = useMemo(
+    () =>
+      atom((get) => {
+        const current = get(currentPositionAtom);
+        return `${current?.lastEval?.bestMove ?? ""}|${current?.eval?.moveClassification ?? ""}`;
+      }),
+    [currentPositionAtom]
+  );
+  const arrowKey = useAtomValue(arrowKeyAtom);
+  const isLgOrGreater = useMediaQuery((theme) => theme.breakpoints.up("lg"));
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const [showPromotionDialog, setShowPromotionDialog] = useState(false);
   const [moveClickFrom, setMoveClickFrom] = useState<Square | null>(null);
   const [moveClickTo, setMoveClickTo] = useState<Square | null>(null);
@@ -208,8 +218,7 @@ export default function Board({
   );
 
   const customArrows: Arrow[] = useMemo(() => {
-    const bestMove = position?.lastEval?.bestMove;
-    const moveClassification = position?.eval?.moveClassification;
+    const [bestMove, moveClassification] = arrowKey.split("|");
 
     if (
       bestMove &&
@@ -231,7 +240,7 @@ export default function Board({
     }
 
     return [];
-  }, [position, showBestMoveArrow, boardHue]);
+  }, [arrowKey, showBestMoveArrow, boardHue]);
 
   const SquareRenderer: CustomSquareRenderer = useMemo(() => {
     return getSquareRenderer({
@@ -239,24 +248,31 @@ export default function Board({
       clickedSquaresAtom,
       playableSquaresAtom,
       showPlayerMoveIconAtom,
-      boardSize: boardSize || 400,
+      isLgOrGreater,
     });
   }, [
     currentPositionAtom,
     clickedSquaresAtom,
     playableSquaresAtom,
     showPlayerMoveIconAtom,
-    boardSize,
+    isLgOrGreater,
   ]);
+
+  useEffect(() => {
+    PIECE_CODES.forEach((piece) => {
+      const image = new window.Image();
+      image.src = `/piece/${pieceSet}/${piece}.svg`;
+    });
+  }, [pieceSet]);
 
   const customPieces = useMemo(
     () =>
       PIECE_CODES.reduce<CustomPieces>((acc, piece) => {
         acc[piece] = ({ squareWidth }) => (
-          <Box
-            width={squareWidth}
-            height={squareWidth}
-            sx={{
+          <div
+            style={{
+              width: squareWidth,
+              height: squareWidth,
               backgroundImage: `url(/piece/${pieceSet}/${piece}.svg)`,
               backgroundSize: "contain",
             }}
@@ -339,7 +355,7 @@ export default function Board({
             onPromotionPieceSelect={onPromotionPieceSelect}
             showPromotionDialog={showPromotionDialog}
             promotionToSquare={moveClickTo}
-            animationDuration={200}
+            animationDuration={reduceMotion ? 0 : 200}
             customPieces={customPieces}
           />
         </Grid>
