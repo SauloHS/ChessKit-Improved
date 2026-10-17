@@ -13,6 +13,7 @@ import {
 
 const MenuOptions = [
   { text: "Analysis", icon: "streamline:magnifying-glass-solid", href: "/" },
+  { text: "Puzzles", icon: "mdi:puzzle", href: "/puzzles" },
 ];
 
 interface Props {
