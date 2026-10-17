@@ -10,14 +10,13 @@ import {
 import { CLASSIFICATION_COLORS } from "@/constants";
 import { boardHueAtom } from "./states";
 import { areObjectsEqual, isObject } from "@/lib/object";
-import { useMediaQuery } from "@mui/material";
 
 export interface Props {
   currentPositionAtom: PrimitiveAtom<CurrentPosition>;
   clickedSquaresAtom: PrimitiveAtom<Square[]>;
   playableSquaresAtom: PrimitiveAtom<Square[]>;
   showPlayerMoveIconAtom?: PrimitiveAtom<boolean>;
-  boardSize: number;
+  isLgOrGreater: boolean;
 }
 
 export function getSquareRenderer({
@@ -25,7 +24,7 @@ export function getSquareRenderer({
   clickedSquaresAtom,
   playableSquaresAtom,
   showPlayerMoveIconAtom = atom(false),
-  boardSize,
+  isLgOrGreater,
 }: Props) {
   const squareRenderer = memo(
     forwardRef<HTMLDivElement, CustomSquareProps>((props, ref) => {
@@ -97,10 +96,6 @@ export function getSquareRenderer({
         [isClicked, isFromSquare, isToSquare, moveClassification]
       );
 
-      const isLgOrGreater = useMediaQuery((theme) =>
-        theme.breakpoints.up("lg")
-      );
-
       const isBorderColumn = square[0] === "a" || square[0] === "h";
       const iconOffset = isBorderColumn && !isLgOrGreater ? 8 : 0;
 
@@ -120,12 +115,14 @@ export function getSquareRenderer({
             <Image
               src={`/icons/${moveClassification}.png`}
               alt="move-icon"
-              width={Math.min(40, boardSize * 0.06)}
-              height={Math.min(40, boardSize * 0.06)}
+              width={40}
+              height={40}
               style={{
                 position: "absolute",
-                top: Math.max(-13.5, boardSize * -0.03) + iconOffset + "px",
-                right: Math.max(-13.5, boardSize * -0.03) + iconOffset + "px",
+                top: `calc(max(-13.5px, -24%) + ${iconOffset}px)`,
+                right: `calc(max(-13.5px, -24%) + ${iconOffset}px)`,
+                width: "min(40px, 48%)",
+                height: "auto",
                 zIndex: 100,
               }}
             />
