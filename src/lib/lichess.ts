@@ -216,6 +216,31 @@ interface ZstdLibrary {
   ) => ZstdDecoder;
 }
 
+export type PuzzleErrorCode =
+  | "CORS_BLOCKED"
+  | "NETWORK_UNREACHABLE"
+  | "HTTP_ERROR"
+  | "DECODER_LOAD_FAILED"
+  | "DECODER_MISSING"
+  | "READ_FAILED"
+  | "STORAGE_FAILED"
+  | "NO_PUZZLES";
+
+export class PuzzleImportError extends Error {
+  code: PuzzleErrorCode;
+  detail?: string;
+
+  constructor(code: PuzzleErrorCode, message: string, detail?: string) {
+    super(message);
+    this.name = "PuzzleImportError";
+    this.code = code;
+    this.detail = detail;
+  }
+}
+
+const describeError = (error: unknown) =>
+  error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+
 let zstdPromise: Promise<ZstdLibrary> | null = null;
 
 const getZstdGlobal = () =>
@@ -236,11 +261,26 @@ const loadZstd = (): Promise<ZstdLibrary> => {
     script.async = true;
     script.onload = () => {
       const loaded = getZstdGlobal();
-      if (loaded) resolve(loaded);
-      else reject(new Error("The zstd decoder did not load."));
+      if (loaded) {
+        resolve(loaded);
+        return;
+      }
+      reject(
+        new PuzzleImportError(
+          "DECODER_MISSING",
+          "The zstd decoder loaded but did not register itself.",
+          ZSTD_DECODER_URL
+        )
+      );
     };
     script.onerror = () =>
-      reject(new Error("Could not load the zstd decoder."));
+      reject(
+        new PuzzleImportError(
+          "DECODER_LOAD_FAILED",
+          "Could not load the zstd decoder from the CDN. Check your connection or an ad blocker.",
+          ZSTD_DECODER_URL
+        )
+      );
     document.head.appendChild(script);
   });
 
@@ -444,9 +484,31 @@ const importPuzzleStream = async (
     await flush();
     onProgress?.({ readBytes, totalBytes, scanned, kept });
 
-    if (kept === 0) throw new Error("No puzzles were found in this file.");
+    if (kept === 0) {
+      throw new PuzzleImportError(
+        "NO_PUZZLES",
+        "No puzzles were found in this file. Make sure it is lichess_db_puzzle.csv or .csv.zst."
+      );
+    }
 
     return kept;
+  } catch (error) {
+    if (error instanceof PuzzleImportError) throw error;
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+    if (error instanceof DOMException && error.name === "QuotaExceededError") {
+      throw new PuzzleImportError(
+        "STORAGE_FAILED",
+        "Not enough free storage on this device. Choose a smaller number of puzzles.",
+        describeError(error)
+      );
+    }
+    throw new PuzzleImportError(
+      "READ_FAILED",
+      "Reading the puzzle data failed.",
+      describeError(error)
+    );
   } finally {
     reader.cancel().catch(() => undefined);
   }
@@ -474,13 +536,44 @@ export const downloadLichessPuzzles = async (
     if (error instanceof DOMException && error.name === "AbortError") {
       throw error;
     }
-    throw new Error(
-      "The browser could not download the file from Lichess. Download lichess_db_puzzle.csv.zst to your phone and use Choose file instead."
+
+    const reachable = await fetch(LICHESS_PUZZLE_DB_URL, {
+      method: "HEAD",
+      mode: "no-cors",
+      signal: options.signal,
+    })
+      .then(() => true)
+      .catch(() => false);
+
+    if (reachable) {
+      throw new PuzzleImportError(
+        "CORS_BLOCKED",
+        "Lichess is reachable, but it does not allow this site to download the file. Download lichess_db_puzzle.csv.zst to your phone and use Choose file instead.",
+        describeError(error)
+      );
+    }
+
+    throw new PuzzleImportError(
+      "NETWORK_UNREACHABLE",
+      "Could not reach database.lichess.org. Check your connection and try again.",
+      describeError(error)
     );
   }
 
-  if (!response.ok || !response.body) {
-    throw new Error(`Lichess answered with status ${response.status}.`);
+  if (!response.ok) {
+    throw new PuzzleImportError(
+      "HTTP_ERROR",
+      "Lichess refused the download.",
+      `HTTP ${response.status} ${response.statusText}`.trim()
+    );
+  }
+
+  if (!response.body) {
+    throw new PuzzleImportError(
+      "READ_FAILED",
+      "The download has no readable body in this browser.",
+      "response.body is null"
+    );
   }
 
   const totalBytes = Number(response.headers.get("content-length")) || 0;
